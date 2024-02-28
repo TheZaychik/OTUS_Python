@@ -1,7 +1,7 @@
 import os
 import unittest
 
-from log_analyzer import (
+from .log_analyzer import (
     config,
     _find_newest_log,
     _get_prepared_data,
