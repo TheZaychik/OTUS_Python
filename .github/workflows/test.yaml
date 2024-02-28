@@ -11,4 +11,5 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python3 -m unittest 01_advanced_basics/log_analyzer/test.py
+      - run: cd 01_advanced_basics/log_analyzer
+      - run: python3 -m unittest test.py
