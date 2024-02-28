@@ -9,7 +9,7 @@ import statistics
 from copy import copy
 from datetime import datetime
 from collections import namedtuple
-
+from typing import Union
 # log_format ui_short '$remote_addr  $remote_user $http_x_real_ip [$time_local] "$request" '
 #                     '$status $body_bytes_sent "$http_referer" '
 #                     '"$http_user_agent" "$http_x_forwarded_for" "$http_X_REQUEST_ID" "$http_X_RB_USER" '
@@ -33,7 +33,7 @@ def _read_log(file_path: str, file_encoding: str = "utf-8"):
     logging.info(f'Data successfully read from {file_path}')
 
 
-def _find_newest_log(_config: dict) -> namedtuple | None:
+def _find_newest_log(_config: dict) -> Union[namedtuple, None]:
     Log = namedtuple("Log", "date filename path file_type")
     log = Log(datetime.now().date().min, "", "", "")
     files = os.listdir(_config["LOG_DIR"])
