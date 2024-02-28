@@ -19,24 +19,21 @@ config = {
     "REPORT_SIZE": 1000,
     "REPORT_DIR": "./reports",
     "LOG_DIR": "./log",
-    "SCRIPT_LOG_FILE": None
+    "SCRIPT_LOG_FILE": None,
+    "ERROR_RATE": 51,
 }
 
 
 def _read_log(file_path: str, file_encoding: str = "utf-8"):
-    if file_path.endswith(".gz"):
-        file = gzip.open(file_path, "r")
-    else:
-        file = open(file_path, "r", encoding=file_encoding)
-    line = file.readline()
-    while line:
-        yield line.decode()
-        line = file.readline()
-    file.close()
+    with gzip.open(file_path, "r") if file_path.endswith(".gz") else open(file_path, "r", encoding=file_encoding) as f:
+        line = f.readline()
+        while line:
+            yield line.decode()
+            line = f.readline()
     logging.info(f'Data successfully read from {file_path}')
 
 
-def _find_newest_log(_config: dict) -> namedtuple:
+def _find_newest_log(_config: dict) -> namedtuple | None:
     Log = namedtuple("Log", "date filename path file_type")
     log = Log(datetime.now().date().min, "", "", "")
     files = os.listdir(_config["LOG_DIR"])
@@ -47,7 +44,10 @@ def _find_newest_log(_config: dict) -> namedtuple:
             if log.date < file_date:
                 log = Log(file_date, filename, f'{_config["LOG_DIR"]}/{filename}', regex[0][1])
     logging.info(f'Find newest log - {log.filename}')
-    return log
+    if log.date == datetime.now().date().min:
+        return None
+    else:
+        return log
 
 
 def _get_prepared_data(log: namedtuple, _config: dict) -> namedtuple:
@@ -115,8 +115,8 @@ def _setup_and_check(default_config: dict) -> dict:
             raw = f.read()
         try:
             imported_config = json.loads(raw)
-        except json.JSONDecodeError:
-            raise Exception("Config is invalid")
+        except json.JSONDecodeError as e:
+            raise json.JSONDecodeError("Config is invalid", e.doc, e.pos)
         for k, v in imported_config.items():
             new_config[k] = v
     if not os.path.isdir(new_config["LOG_DIR"]):
@@ -128,11 +128,14 @@ def _setup_and_check(default_config: dict) -> dict:
 
 def create_report(_config: dict):
     log = _find_newest_log(_config)
+    if log is None:
+        logging.exception(f"Report doesnt exist")
+        return
     if f'report-{log.date}.html' in os.listdir(_config["REPORT_DIR"]):
         logging.exception(f"A report with date {log.date} already exists")
         return
     raw_data = _get_prepared_data(log, _config)
-    if raw_data.errors / raw_data.total_urls_count * 100 > 51:
+    if raw_data.errors / raw_data.total_urls_count * 100 > _config['ERROR_RATE']:
         logging.exception("The percentage of errors is more than 51, abort")
         return
     report = _calculate_stat(raw_data.total_urls_count, raw_data.total_request_time, raw_data.urls_stat, _config)
