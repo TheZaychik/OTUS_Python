@@ -169,7 +169,6 @@ class OnlineScoreRequest(BaseModel):
 
     def __init__(self, **kwargs) -> None:
         pair_exists = self._check_pairs(**kwargs)
-        print(kwargs, pair_exists)
         if not pair_exists:
             raise ValueError(f"No one pair")
         super().__init__(**kwargs)
@@ -215,7 +214,6 @@ def check_auth(request):
 
 def method_handler(request, ctx, store):
     response, code = None, None
-    print(request)
     body = request.get("body")
     if body is None or not isinstance(body, dict) or len(body.keys()) == 0:
         return response, INVALID_REQUEST

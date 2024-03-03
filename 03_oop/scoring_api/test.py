@@ -206,7 +206,6 @@ class TestSuite(unittest.TestCase):
         }
         self.set_valid_auth(request)
         response, code = self.get_response(request)
-        print(response)
         self.assertEqual(api.INVALID_REQUEST, code, arguments)
         self.assertTrue(len(response))
 
@@ -229,7 +228,6 @@ class TestSuite(unittest.TestCase):
         }
         self.set_valid_auth(request)
         response, code = self.get_response(request)
-        print(response)
         self.assertEqual(api.OK, code, arguments)
         self.assertEqual(len(arguments["client_ids"]), len(response))
         self.assertTrue(
