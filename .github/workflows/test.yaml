@@ -12,5 +12,6 @@ jobs:
         with:
           python-version: '3.12'
       - name: Run unittest
-        working-directory: ./01_advanced_basics/log_analyzer
+#        working-directory: ./01_advanced_basics/log_analyzer
+        working-directory: ./03_oop/scoring_api
         run: python3 -m unittest test.py
