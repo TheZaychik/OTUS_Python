@@ -50,11 +50,13 @@ class BaseField:
 
     def __set__(self, instance, value) -> None:
         if not value and self.nullable is False:
+            logging.exception(f"Value error: Non-nullable {self.name} field cannot be None")
             raise ValueError(f"Non-nullable {self.name} field cannot be None")
         instance.__dict__[self.name] = value
 
     def __delete__(self, instance) -> None:
         if self.required:
+            logging.exception(f"Value error: Cannot delete required field {self.name}")
             raise Exception(f"Cannot delete required field {self.name}")
         del instance.__dict__[self.name]
 
@@ -70,11 +72,13 @@ class BaseModel:
         for field_name, descr in user_class_attrs.items():
             if field_name not in kwargs.keys():
                 if descr.required:
+                    logging.exception(f"Value error: Required field {field_name} must be specified")
                     raise ValueError(f"Required field {field_name} must be specified")
             else:
                 kw_value = kwargs.get(field_name)
 
                 if not descr.nullable and kw_value is None:
+                    logging.exception(f"Value error: Non-nullable {field_name} field cannot be empty")
                     raise Exception(f"Non-nullable {field_name} field cannot be empty")
 
                 setattr(self, field_name, kw_value)
@@ -83,8 +87,10 @@ class BaseModel:
 class CharField(BaseField):
     def __set__(self, instance, value) -> None:
         if not isinstance(value, (str | None)):
+            logging.exception(f"Value error: Field {self.name} must be a string")
             raise ValueError(f"Field {self.name} must be a string")
         if value and self.required and value == "":
+            logging.exception(f"Value error: Field {self.name} required")
             raise ValueError(f"Field {self.name} required")
         super().__set__(instance, value)
 
@@ -92,6 +98,7 @@ class CharField(BaseField):
 class ArgumentsField(BaseField):
     def __set__(self, instance, value) -> None:
         if not isinstance(value, (dict | None)):
+            logging.exception(f"Value error: Field {self.name} must be a dict")
             raise ValueError(f"Field {self.name} must be a dict")
         super().__set__(instance, value)
 
@@ -99,8 +106,10 @@ class ArgumentsField(BaseField):
 class EmailField(BaseField):
     def __set__(self, instance, value) -> None:
         if not isinstance(value, (str | None)):
+            logging.exception(f"Value error: Field {self.name} must be a string")
             raise ValueError(f"Field {self.name} must be a string")
         if value and len(re.findall(r"^\S+@\S+\.\S+$", value)) == 0:
+            logging.exception(f"Value error: Field {self.name} validation failed")
             raise ValueError("Email validation failed")
         super().__set__(instance, value)
 
@@ -108,11 +117,13 @@ class EmailField(BaseField):
 class PhoneField(BaseField):
     def __set__(self, instance, value) -> None:
         if not isinstance(value, (str | int | None)):
+            logging.exception(f"Value error: Field {self.name} must be a string or int")
             raise ValueError(f"Field {self.name} must be a string or int")
         else:
             if isinstance(value, int):
                 value = str(value)
             if value and len(re.findall(r"^7[0-9]{10}$", value)) == 0:
+                logging.exception(f"Value error: Field {self.name} validation failed")
                 raise ValueError("PhoneNumber validation failed")
         super().__set__(instance, value)
 
@@ -120,8 +131,10 @@ class PhoneField(BaseField):
 class DateField(BaseField):
     def __set__(self, instance, value) -> None:
         if not isinstance(value, (str | None)):
+            logging.exception(f"Value error: Field {self.name} must be a string")
             raise ValueError(f"Field {self.name} must be a string")
         if value and len(re.findall(r"^[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{4}$", value)) == 0:
+            logging.exception(f"Value error: Field {self.name} validation failed")
             raise ValueError(f"Field {self.name} validation failed")
         super().__set__(instance, value)
 
@@ -131,14 +144,17 @@ class BirthDayField(DateField):
         super().__set__(instance, value)
         date = datetime.datetime.strptime(value, "%d.%m.%Y")
         if datetime.datetime.now().year - date.year > 70:
+            logging.exception(f"Value error: Field {self.name}, value {value} is bigger than 70")
             raise ValueError(f"Field {self.name}, value {value} is bigger than 70")
 
 
 class GenderField(BaseField):
     def __set__(self, instance, value) -> None:
         if not isinstance(value, (int | None)):
+            logging.exception(f"Value error: Field {self.name} must be a int")
             raise ValueError(f"Field {self.name} must be a int")
         if value and value not in (0, 1, 2):
+            logging.exception(f"Value error: Field {self.name} must be a 0, 1, 2")
             raise ValueError(f"Field {self.name} must be a 0, 1, 2")
         super().__set__(instance, value)
 
@@ -149,6 +165,7 @@ class ClientIDsField(BaseField):
 
     def __set__(self, instance, value) -> None:
         if not isinstance(value, list) or not all(isinstance(i, int) for i in value):
+            logging.exception(f"Value error: Field {self.name} must be a list[int]")
             raise ValueError(f"Field {self.name} must be a list[int]")
 
         super().__set__(instance, value)
@@ -170,6 +187,7 @@ class OnlineScoreRequest(BaseModel):
     def __init__(self, **kwargs) -> None:
         pair_exists = self._check_pairs(**kwargs)
         if not pair_exists:
+            logging.exception(f"Value error: No one pair")
             raise ValueError(f"No one pair")
         super().__init__(**kwargs)
 
@@ -220,7 +238,9 @@ def method_handler(request, ctx, store):
     method = HandlerClass.__dict__.get(body.get("method"))
     if method:
         response, code = method(request, ctx, store)
+        logging.info(response, code)
         return response, code
+    logging.exception("Method not found")
     return {"error": "Method not found"}, INVALID_REQUEST
 
 
@@ -233,6 +253,7 @@ class HandlerClass:
             return {"error": str(e)}, INVALID_REQUEST
 
         if not check_auth(req):
+            logging.exception(f"Auth error: 403 Forbidden")
             return {"error": "403 Forbidden"}, FORBIDDEN
 
         if req.is_admin:
@@ -263,6 +284,7 @@ class HandlerClass:
             return {"error": str(e)}, INVALID_REQUEST
 
         if not check_auth(req):
+            logging.exception(f"Auth error: 403 Forbidden")
             return {"error": "403 Forbidden"}, FORBIDDEN
 
         try:
